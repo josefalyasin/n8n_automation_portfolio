@@ -1,0 +1,316 @@
+{
+  "name": "scandy",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlookTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b3f30586-6bcd-42a5-b92b-8139867cb1c9",
+      "name": "Microsoft Outlook Trigger",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "IWesv0FHelxYF5ev",
+          "name": "Microsoft Outlook account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cc9397ee-4303-4ac5-9777-04b87b15339e",
+              "name": "subject",
+              "value": "={{$json[\"subject\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "5d9381f2-faf5-4718-b6dd-6838aa3a8ec3",
+              "name": "body",
+              "value": "={{$json[\"bodyPreview\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "2972be8a-ae2a-4c4a-bd6a-c552656ace67",
+              "name": "from",
+              "value": "={{$json[\"from\"]}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9124544b-08e0-4d0b-8399-0382fbf7fb76",
+      "name": "Set Content"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        224
+      ],
+      "id": "20cbd04e-f3c3-4aea-85b8-9aac733889bd",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "hSRRql1ocQqMOyyd",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ämne: {{$json[\"subject\"]}}\nText: {{$json[\"body\"]}}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Du är en e-postkategoriseringsassistent för företaget Scandy Candy. \nDin uppgift är att kategorisera inkommande e-post i EN av följande kategorier:\n\n1. Refund/Return Request → Endast mail som tydligt är en återbetalning eller retur från \"TikTok Shop\".\n2. Order Confirmation → Endast orderbekräftelser från \"ScandyCandy (Shopify)\" som innehåller ordernummer och orderdetaljer.\n3. Inbox → Alla andra mail som inte passar exakt i ovanstående kategorier.\n\nInstruktioner:\n- Om avsändaren är \"TikTok Shop\" och texten handlar om refund eller return → välj Refund/Return Request.\n- Om avsändaren är \"ScandyCandy (Shopify)\" och ämnet/texten visar en orderbekräftelse → välj Order Confirmation.\n- Om mailet nämner \"order\" men INTE är en riktig orderbekräftelse (t.ex. kundfrågor eller supportärenden) → välj Inbox.\n- Du får endast svara med EN av kategorierna: `Refund/Return Request`, `Order Confirmation` eller `Inbox`.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e4052d88-6155-4242-9573-228449dbe165",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "48a37c4d-913e-42b8-84f8-1dcd09cd2ce6",
+                    "leftValue": "={{$json[\"text\"]}}",
+                    "rightValue": "Order Confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b45f7128-3ef7-49c9-916b-4fa65c4d4c16",
+                    "leftValue": "={{$json[\"text\"]}}",
+                    "rightValue": "Refund/Return Request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        768,
+        0
+      ],
+      "id": "932d79b0-47b7-488e-85fc-ead0e60ff723",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Microsoft Outlook Trigger').item.json[\"id\"] }}",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AAMkADQyZWI1ZWIyLTg2YjItNDRjOS05ODAxLTI0N2RkMGViYmM2MgAuAAAAAAAUmUUzY5uyQZQxcfJx20C9AQCr_ej2GIfoR43LgwvQ6pHxAAEX6LHuAAA=",
+          "mode": "list",
+          "cachedResultName": "Order Confirmation",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AAMkADQyZWI1ZWIyLTg2YjItNDRjOS05ODAxLTI0N2RkMGViYmM2MgAuAAAAAAAUmUUzY5uyQZQxcfJx20C9AQCr_ej2GIfoR43LgwvQ6pHxAAEX6LHuAAA%3D"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        -128
+      ],
+      "id": "caa87347-b070-446c-87be-8928d4efc274",
+      "name": "Move a message",
+      "webhookId": "bd21c8e5-5c92-479f-b563-386948b1c5a1",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "IWesv0FHelxYF5ev",
+          "name": "Microsoft Outlook account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "messageId": {
+          "__rl": true,
+          "value": "={{ $('Microsoft Outlook Trigger').item.json[\"id\"] }}\n",
+          "mode": "id"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "AAMkADQyZWI1ZWIyLTg2YjItNDRjOS05ODAxLTI0N2RkMGViYmM2MgAuAAAAAAAUmUUzY5uyQZQxcfJx20C9AQCr_ej2GIfoR43LgwvQ6pHxAAEX6LHvAAA=",
+          "mode": "list",
+          "cachedResultName": "Refund/Return Request",
+          "cachedResultUrl": "https://outlook.office365.com/mail/AAMkADQyZWI1ZWIyLTg2YjItNDRjOS05ODAxLTI0N2RkMGViYmM2MgAuAAAAAAAUmUUzY5uyQZQxcfJx20C9AQCr_ej2GIfoR43LgwvQ6pHxAAEX6LHvAAA%3D"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        160
+      ],
+      "id": "4499dec4-3325-426f-80f9-eeb3e09aa3b5",
+      "name": "Move a message1",
+      "webhookId": "bd21c8e5-5c92-479f-b563-386948b1c5a1",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "IWesv0FHelxYF5ev",
+          "name": "Microsoft Outlook account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Microsoft Outlook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Content": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Move a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cc7cd4ae-ec75-454a-9328-88245caa7bd3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b85c5ea7e9553515098b99d85fbb5196a3bfe0c1d2a4805175e13ebd8ca1cf6b"
+  },
+  "id": "Dkl3u3eeDk48M0nh",
+  "tags": []
+}
